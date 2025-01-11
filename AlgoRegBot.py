@@ -123,6 +123,12 @@ logger2.addHandler(ch)
 
 sys.excepthook = handle_exception
 
+response_git_version = requests.get("https://raw.githubusercontent.com/AlgoApi"
+                                    "/AlgoReg_ADB/refs/heads/master/VERSION.txt")
+
+if response_git_version.text.split("\n")[4] != "AlgoRegBot=1.1":
+    logger2.warning("ДОСТУПНО ОБНОВЛЕНИЕ AlgoRegBot.py")
+
 # Конфигурация
 API_ID = 20427673
 API_HASH = "046f9b91f1158d77b8d9765c00849b82"

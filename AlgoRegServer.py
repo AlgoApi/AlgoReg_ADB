@@ -572,6 +572,12 @@ logger2.addHandler(ch)
 
 sys.excepthook = handle_exception
 
+response_git_version = requests.get("https://raw.githubusercontent.com/AlgoApi"
+                                    "/AlgoReg_ADB/refs/heads/master/VERSION.txt")
+
+if response_git_version.text.split("\n")[3] != "AlgoRegServer=1.1":
+    logger2.warning("ДОСТУПНО ОБНОВЛЕНИЕ AlgoRegServer.py")
+
 if __name__ == "__main__":
     print("DEAMON")
     time.sleep(2)

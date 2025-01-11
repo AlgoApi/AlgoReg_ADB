@@ -367,8 +367,8 @@ if __name__ == "__main__":
     response_git_version = requests.get("https://raw.githubusercontent.com/AlgoApi"
                                         "/AlgoReg_ADB/refs/heads/master/VERSION.txt")
 
-    if response_git_version.text != "1.1.1":
-        logger2.warning("ДОСТУПНО ОБНОВЛЕНИЕ")
+    if response_git_version.text.split("\n")[0] != "main=1.1":
+        logger2.warning("ДОСТУПНО ОБНОВЛЕНИЕ main.py")
 
     TelegramWorker = None
 

@@ -42,11 +42,16 @@ class TelegramService:
         self.accounts_on_client = accounts_on_client
         self.target_telegram_path = target_telegram_path
         self.manual_input = False
+        response_git_version = requests.get("https://raw.githubusercontent.com/AlgoApi"
+                                            "/AlgoReg_ADB/refs/heads/master/VERSION.txt")
+
+        if response_git_version.text.split("\n")[1] != "telegram_service=1.2":
+            logger2.warning("ДОСТУПНО ОБНОВЛЕНИЕ telegram_service.py")
 
     def check_click(self, ui_elem: str, logger_text_click, logger_text_check, critical=True):
         try_n = 0
         if ("permission" in logger_text_click.lower() or "Продолжить" in logger_text_click.lower() or
-            "почт" in logger_text_click.lower() or "выбер" in logger_text_click.lower()
+                "почт" in logger_text_click.lower() or "выбер" in logger_text_click.lower()
                 or "google" in logger_text_click.lower()):
             SEC_SLEEP_local = 0.5
         else:
@@ -169,19 +174,28 @@ class TelegramService:
                     logger2.info(phone_number)
                     self.d.send_keys(phone_number)
                     time.sleep(self.delay_sleep)
+
+                    self.check_click('//*[@content-desc="Готово"]',
+                                     "click Готово",
+                                     "Поиск Готово")
+                    time.sleep(self.delay_sleep * 5)
+                    self.check_click('//android.widget.TextView[@text="Да"]',
+                                     "click Да",
+                                     "Поиск Да")
             except Exception:
                 continue
             time.sleep(8 - try_n * 3)
             logger2.info("ожидаем авто ввода номера")
             try_n += 1
 
-        self.check_click('//*[@content-desc="Готово"]',
-                         "click Готово",
-                         "Поиск Готово")
-        time.sleep(self.delay_sleep * 5)
-        self.check_click('//android.widget.TextView[@text="Да"]',
-                         "click Да",
-                         "Поиск Да")
+        if not self.manual_input:
+            self.check_click('//*[@content-desc="Готово"]',
+                             "click Готово",
+                             "Поиск Готово", critical=False)
+            time.sleep(self.delay_sleep * 5)
+            self.check_click('//android.widget.TextView[@text="Да"]',
+                             "click Да",
+                             "Поиск Да", critical=False)
 
         time.sleep(self.delay_sleep)
         self.check_click('//android.widget.TextView[@text="d Войти через аккаунт Google"]',
@@ -330,8 +344,9 @@ class TelegramService:
         time.sleep(self.delay_sleep)
         time.sleep(self.SEC_SLEEP)
         timeout_sec_sleep = 0
-        timeout_max_sec_sleep = 150
-        while self.d.exists(text="Проверка телефона"):
+        timeout_max_sec_sleep = 160
+        while (self.d.exists(textContains="Проверка телефона") or
+               self.d.exists(textContains="Отвечать на звонок не требуется")):
             if timeout_sec_sleep > timeout_max_sec_sleep:
                 logger2.error("не дождались проверки")
                 self.check_click('//*[@text="Получить SMS с кодом"]', "нажимаем получить код из смс",
@@ -340,11 +355,12 @@ class TelegramService:
             else:
                 timeout_sec_sleep += self.SEC_SLEEP + 10
             time.sleep(self.SEC_SLEEP + 10)
-            logger2.info("ждём проверку 150 сек")
+            logger2.info("ждём проверку 160 сек")
 
         time.sleep(self.SEC_SLEEP)
         time.sleep(self.SEC_SLEEP)
 
+        logger2.info("Проверяем на Введите код")
         while self.d.exists(text="Введите код"):
             logger2.info("Проверка телефона не удалась ждём код из смс 40 сек")
             if self.SEC_SLEEP < 2:
@@ -444,7 +460,7 @@ class TelegramService:
     def set_name(self):
         time.sleep(self.SEC_SLEEP)
         try_n = 0
-        while try_n <= self.TIMEOUT_N + 1:
+        while try_n <= self.TIMEOUT_N + 2:
             if self.SEC_SLEEP < 2:
                 time.sleep(self.SEC_SLEEP * 2)
             else:
@@ -468,11 +484,11 @@ class TelegramService:
             else:
                 all_elem = self.d.xpath("//android.widget.EditText").all()
                 try_n += 1
-                if try_n > self.TIMEOUT_N + 2:
+                if try_n <= self.TIMEOUT_N + 2:
                     logger2.critical(f"set_name НЕ НАЙДЕНЫ поля текста {all_elem}")
                     self.collect_error_data(f"set_name НЕ НАЙДЕНЫ поля текста {all_elem}")
                     logger2.warning("Выполните установку имени вручную и продолжите в телеграм")
-                    #exit(f"set_name НЕ НАЙДЕНЫ поля текста {all_elem}")
+                    # exit(f"set_name НЕ НАЙДЕНЫ поля текста {all_elem}")
                 else:
                     logger2.warning(f"set_name ПОПЫТКА {try_n} НЕ НАЙДЕНЫ поля текста")
         time.sleep(self.SEC_SLEEP)
@@ -730,18 +746,27 @@ class TelegramService:
 
             # 2. Ожидание запроса кода от сервера
             start_time = time.time()
-            while time.time() - start_time < 120:  # Ожидание до 3 минут
-                response = requests.post(f"{server_url}/auth/telegram/code", json={"session_id": session_id, "auth_code": 9})
+            while time.time() - start_time < 180:  # Ожидание до 3 минут
+                try:
+                    response = requests.post(f"{server_url}/auth/telegram/code",
+                                             json={"session_id": session_id, "auth_code": 9})
+                except Exception as e:
+                    logger2.exception(f"Превышено время ожидания \n{e}", exc_info=True)
                 if response.status_code == 400 and "Code not requested yet" in response.json().get("message"):
                     logger2.info("Сервер ещё не запросил код...")
-                    time.sleep(5)  # Периодическая проверка каждые 5 секунд
+                    time.sleep(15)  # Периодическая проверка каждые 15 секунд
                 else:
                     logger2.info("Сервер ожидает код авторизации.")
                     break
 
+            if time.time() - start_time >= 120:
+                self.collect_error_data("Не дождались запроса кода")
+                exit("Запустите python3 telegram_service.py, как только решите проблемы с соединением к серверу")
+
             # 3. Отправка кода авторизации
             auth_code = self.get_tg_code()
-            response = requests.post(f"{server_url}/auth/telegram/code", json={"session_id": session_id, "auth_code": auth_code})
+            response = requests.post(f"{server_url}/auth/telegram/code",
+                                     json={"session_id": session_id, "auth_code": auth_code})
             if response.status_code == 200:
                 logger2.info("Авторизация завершена успешно!")
                 time.sleep(6)
@@ -810,7 +835,7 @@ class TelegramService:
             if num_folder >= 10:
                 logger2.critical("login_telegram_client ПАПКА НЕ СОЗДАНА")
                 self.collect_error_data("login_telegram_client ПАПКА НЕ СОЗДАНА")
-                #input("Введите что либо, чтобы продолжить")
+                # input("Введите что либо, чтобы продолжить")
                 return "login_telegram_client ПАПКА НЕ СОЗДАНА"
             self.target_telegram_path = os.path.join(f'telegram{formatted_datetime}_{num_folder}', 'Telegram.app')
             logger2.info(f"login_telegram_client {self.target_telegram_path}")
@@ -838,7 +863,7 @@ class TelegramService:
                 logger.send_error_via_tg(f"error_{formatted_datetime}.png",
                                          f"login_telegram_client FATAL copy {os.path.join('Telegram.app')}\n"
                                          f"{self.target_telegram_path}", xml_path=xml_path)
-                #input("Введите что либо, чтобы продолжить")
+                # input("Введите что либо, чтобы продолжить")
                 exit(f"login_telegram_client FATAL copy {os.path.join('Telegram.app')} {self.target_telegram_path}")
             time.sleep(self.SEC_SLEEP)
             logger2.info("login_telegram_client закрытие существующих PC клиентов telegram")
@@ -969,7 +994,7 @@ class TelegramService:
         else:
             logger2.critical(f"login_telegram_client не найдено окно telegram {win}")
             self.collect_error_data(f"login_telegram_client не найдено окно telegram {win}")
-            #input("Введите что либо, чтобы продолжить")
+            # input("Введите что либо, чтобы продолжить")
             exit(f"login_telegram_client не найдено окно telegram {win}")
         time.sleep(self.SEC_SLEEP)
 
@@ -986,9 +1011,9 @@ class TelegramService:
         time.sleep(self.SEC_SLEEP)
 
     def quit_telegram_phone(self):
-        #logger2.warning("ВЫ ДЕЙСТВИТЕЛЬНО ХОТИТЕ ВЫЙТИ ИЗ АККАУНТА НА ТЕЛЕФОНЕ?")
-        #logger2.warning("ПРОВЕРЬТЕ ВХОД В АККАУНТ НА ПК ИЛИ СОХРАНИТЕ(ВОЙДИТЕ) ВРУЧНУЮ")
-        #input("Введите НЕ пустую строку чтобы продолжить или отмеить выход на телефоне")
+        # logger2.warning("ВЫ ДЕЙСТВИТЕЛЬНО ХОТИТЕ ВЫЙТИ ИЗ АККАУНТА НА ТЕЛЕФОНЕ?")
+        # logger2.warning("ПРОВЕРЬТЕ ВХОД В АККАУНТ НА ПК ИЛИ СОХРАНИТЕ(ВОЙДИТЕ) ВРУЧНУЮ")
+        # input("Введите НЕ пустую строку чтобы продолжить или отмеить выход на телефоне")
         time.sleep(self.SEC_SLEEP)
         self.check_click('//*[@content-desc="Открыть меню навигации"]',
                          "quit_telegram_phone click Открыть меню навигации",
@@ -1018,12 +1043,12 @@ class TelegramService:
         time.sleep(self.SEC_SLEEP)
 
     def reinstall_telegram(self):
-        #logger2.warning("ВЫ ДЕЙСТВИТЕЛЬНО ХОТИТЕ ВЫЙТИ ИЗ АККАУНТА НА ТЕЛЕФОНЕ И ПЕРЕУСТАНОВИТЬ ТЕЛЕГРАМ?")
-        #logger2.warning("ПРОВЕРЬТЕ ВХОД В АККАУНТ НА ПК ИЛИ СОХРАНИТЕ(ВОЙДИТЕ) ВРУЧНУЮ")
-        #confirm_input = input("Введите НЕ пустую строку чтобы продолжить или отмените выход на телефоне: ")
-        #if confirm_input is None or confirm_input == "" or len(confirm_input) < 1:
+        # logger2.warning("ВЫ ДЕЙСТВИТЕЛЬНО ХОТИТЕ ВЫЙТИ ИЗ АККАУНТА НА ТЕЛЕФОНЕ И ПЕРЕУСТАНОВИТЬ ТЕЛЕГРАМ?")
+        # logger2.warning("ПРОВЕРЬТЕ ВХОД В АККАУНТ НА ПК ИЛИ СОХРАНИТЕ(ВОЙДИТЕ) ВРУЧНУЮ")
+        # confirm_input = input("Введите НЕ пустую строку чтобы продолжить или отмените выход на телефоне: ")
+        # if confirm_input is None or confirm_input == "" or len(confirm_input) < 1:
         #    return False
-        #logger2.info("reinstall_telegram click по центральной кнопке - выход")
+        # logger2.info("reinstall_telegram click по центральной кнопке - выход")
         with self.d.watch_context() as ctx:
             ctx.when('//*[@resource-id="com.android.systemui:id/center_group"]').click()
             time.sleep(self.SEC_SLEEP)
@@ -1114,30 +1139,26 @@ class TelegramService:
         with self.d.watch_context() as ctx:
             ctx.when('//*[@resource-id="com.android.systemui:id/center_group"]').click()
             time.sleep(self.SEC_SLEEP)
+        self.d.app_stop("com.android.vending")
+        time.sleep(self.SEC_SLEEP)
         self.check_click('//android.widget.TextView[@text="Google Play"]',
                          "click Google Play",
                          "Поиск Google Play")
         time.sleep(self.SEC_SLEEP)
-        logger2.info("click Поиск")
-        with self.d.watch_context() as ctx:
-            ctx.when('//android.widget.TextView[@text="Поиск"]').click()
-            time.sleep(self.SEC_SLEEP)
-        logger2.info("click Поиск в Google Play")
-        with self.d.watch_context() as ctx:
-            ctx.when('//*[@content-desc="Поиск в Google Play"]').click()
-            time.sleep(self.SEC_SLEEP // 2)
+        self.check_click('//android.widget.TextView[@text="Поиск"]',
+                         "click Поиск",
+                         "Поиск Поиск")
         time.sleep(self.SEC_SLEEP)
-        with self.d.watch_context() as ctx:
-            ctx.when('//android.widget.TextView[@text="Поиск приложений и игр"]').click()
-            time.sleep(self.SEC_SLEEP)
+        self.check_click('//android.widget.TextView[@text="Поиск приложений и игр"]',
+                         "click Поиск приложений и игр",
+                         "Поиск Поиск приложений и игр")
         time.sleep(self.SEC_SLEEP)
         logger2.info("ввод telegram")
         self.d.send_keys("telegram")
         time.sleep(self.delay_sleep)
         logger2.info("ввод enter")
         self.d.press("enter")
-        time.sleep(self.delay_sleep)
-        logger2.info('click Telegram\\nУстановлено\\n')
+        time.sleep(self.SEC_SLEEP)
         self.check_click('//*[@content-desc="Telegram\nУстановлено\n"]',
                          r"Click Telegram\nУстановлено\n",
                          r"поиск Telegram\nУстановлено\n")

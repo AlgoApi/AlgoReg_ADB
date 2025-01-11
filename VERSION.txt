@@ -1,1 +1,5 @@
-1.1.1
+main=1.1
+telegram_service=1.2
+logger=1.1
+AlgoRegServer=1.1
+AlgoRegBot=1.1

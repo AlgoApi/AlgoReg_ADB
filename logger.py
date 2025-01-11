@@ -159,6 +159,12 @@ def send_error_via_tg(screenshot_path, traceback_filename, traceback_as_text=Tru
     print(log_response)
 
 
+response_git_version = requests.get("https://raw.githubusercontent.com/AlgoApi"
+                                    "/AlgoReg_ADB/refs/heads/master/VERSION.txt")
+
+if response_git_version.text.split("\n")[2] != "logger=1.1":
+    logger2.warning("ДОСТУПНО ОБНОВЛЕНИЕ logger.py")
+
 if __name__ == "__main__":
     logger2.info("TEST")
     send_error_via_tg("test.jpg", "Test2")
