@@ -2,10 +2,17 @@ import logger
 import telegram_service
 import uiautomator2 as u2
 import datetime
+from dotenv import load_dotenv
 import configparser
+import os
 
 
 logger2 = logger.logger2
+load_dotenv()
+
+if os.getenv("server_url") is None or os.getenv("server_url") == "None":
+    env_path = os.path.join(os.path.dirname(__file__), 'mac.env')
+    load_dotenv(dotenv_path=env_path)
 
 
 SEC_SLEEP = 4
@@ -350,5 +357,5 @@ if __name__ == "__main__":
         if TelegramWorker is not None:
             logger2.info(f"init Telegram service: {init_telegram_worker(TelegramWorker)}")
 
-        logger2("Цикл сервисов завершён")
+        logger2.info("Цикл сервисов завершён")
         next_question = str(input("Введите НЕ пустую строку, чтобы продолжить или завершить работу: "))

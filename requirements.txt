@@ -8,3 +8,4 @@ Flask~=3.1.0
 Pyrogram~=2.0.106
 pyromod~=3.1.6
 pillow~=11.1.0
+python-dotenv~=1.0.1

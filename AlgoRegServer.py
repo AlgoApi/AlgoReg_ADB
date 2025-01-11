@@ -16,11 +16,18 @@ import requests
 import traceback
 import datetime
 import io
+from dotenv import load_dotenv
 
 os.environ['PYTHONIOENCODING'] = 'utf-8'
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+
+load_dotenv()
+
+if os.getenv("chat_id") is None or os.getenv("chat_id") == "None":
+    env_path = os.path.join(os.path.dirname(__file__), 'mac.env')
+    load_dotenv(dotenv_path=env_path)
 
 
 class CustomFormatter(logging.Formatter):
@@ -185,8 +192,8 @@ def login_telegram_client_part1(phone_number: str, proxy: dict[str, str], reset=
         #os.startfile(os.path.dirname(os.path.realpath(__file__)) + "\\" + target_telegram_path)
         logger2.info(os.path.dirname(os.path.realpath(__file__)) + "\\" + target_telegram_path)
         os.startfile(os.path.dirname(os.path.realpath(__file__)) + "\\" + target_telegram_path)
-        logger2.info("Ожидание 4 сек")
-        time.sleep(4)
+        logger2.info("Ожидание 6 сек")
+        time.sleep(6)
     if restart:
         logger2.info("login_telegram_client ПЕРЕЗАПУСК закрытие существующих PC клиентов telegram")
         for proc in psutil.process_iter():
@@ -222,20 +229,20 @@ def login_telegram_client_part1(phone_number: str, proxy: dict[str, str], reset=
             win = pwc.getWindowsWithTitle('Telegram')
     if win is not None and len(win) > 0:
         logger2.info(f"трансформация PC окна telegram")
-        win[0].size = (800, 600)
+        win[0].size = (800, 780)
         win[0].moveTo(1, 1)
         win[0].show()
         logger2.info("Ожидание 3 сек")
         time.sleep(3)
         if accounts_on_client == 0:
             logger2.info(f"click PC по русски")
-            pyautogui.click(400, 476, interval=1)  # по русски
+            pyautogui.click(400, 564, interval=1)  # по русски
             time.sleep(sec_sleep)
             logger2.info(f"click PC начать общение")
-            pyautogui.click(400, 427, interval=1)  # начать общение
+            pyautogui.click(400, 517, interval=1)  # начать общение
         time.sleep(sec_sleep)
         logger2.info(f"click PC по номеру")
-        pyautogui.click(400, 480, interval=1)  # по номеру
+        pyautogui.click(400, 569, interval=1)  # по номеру
         time.sleep(sec_sleep)
         raw_phone_number = phone_number.replace("+7", "").replace(" ", "")
         clear_phone_number = raw_phone_number.replace("(", "").replace(")", "")
@@ -251,10 +258,10 @@ def login_telegram_client_part1(phone_number: str, proxy: dict[str, str], reset=
             pyautogui.click(305, 178, interval=1)  # тип соед
             time.sleep(sec_sleep // 2)
             logger2.info(f"click PC использовать собственный прокси")
-            pyautogui.click(300, 248, interval=1)  # исп собствен прокси
+            pyautogui.click(300, 329, interval=1)  # исп собствен прокси
             time.sleep(sec_sleep // 2)
             logger2.info(f"click PC HTTP")
-            pyautogui.click(290, 190, interval=1)  # HTTP
+            pyautogui.click(290, 279, interval=1)  # HTTP
             time.sleep(sec_sleep // 2)
             logger2.info(f"Ввод PC ip прокси")
             pyautogui.typewrite(proxy["ip"], 0.3)  # ip прокси
@@ -272,16 +279,16 @@ def login_telegram_client_part1(phone_number: str, proxy: dict[str, str], reset=
             pyautogui.typewrite(proxy["password"], 0.3)  # пароль прокси
             time.sleep(sec_sleep // 2)
             logger2.info(f"click PC сохранить прокси")
-            pyautogui.click(495, 508, interval=1)  # сохранить прокси
+            pyautogui.click(495, 598, interval=1)  # сохранить прокси
             time.sleep(sec_sleep)
             logger2.info(f"click PC закрыть прокси")
-            pyautogui.click(368, 524, interval=1)  # закрыть прокси
+            pyautogui.click(368, 616, interval=1)  # закрыть прокси
             time.sleep(sec_sleep)
             logger2.info(f"click PC закрыть продвинутые настройки")
-            pyautogui.click(570, 77, interval=1)  # закрыть настройки
+            pyautogui.click(570, 85, interval=1)  # закрыть настройки
             time.sleep(sec_sleep)
         logger2.info(f"click PC продолжить")
-        pyautogui.click(400, 395, interval=1)  # продолжить
+        pyautogui.click(400, 486, interval=1)  # продолжить
         time.sleep(sec_sleep)
     else:
         logger2.critical(f"login_telegram_client не найдено окно telegram {win}")
@@ -309,21 +316,22 @@ def login_telegram_client_part2(code_tg: str, sec_sleep: int, password: str, deb
         code_tg = code_tg_debug
 
     logger2.info(f"PC find_number() {code_tg} ввод")
-    pyautogui.click(280, 231, interval=1)  # продолжить
+    pyautogui.click(280, 323, interval=1)  # продолжить
     time.sleep(sec_sleep)
     pyautogui.typewrite(str(code_tg), 0.3)  # код из тг
     time.sleep(sec_sleep)
     logger2.info(f"click PC продолжить, после {code_tg} ввод")
-    pyautogui.click(400, 395, interval=1)  # продолжить
+    pyautogui.click(400, 485, interval=1)  # продолжить
     time.sleep(sec_sleep)
     logger2.info(f"PC Ввод {password}, после продолжить")
     pyautogui.typewrite(password, 0.3)  # пароль
     time.sleep(sec_sleep)
     logger2.info(f"click PC продолжить")
-    pyautogui.click(400, 395, interval=1)  # продолжить
+    pyautogui.click(400, 485, interval=1)  # продолжить
+    time.sleep(sec_sleep)
     time.sleep(sec_sleep)
     logger2.info(f"click PC три полоски")
-    pyautogui.click(36, 39, interval=1)  # три полоски
+    pyautogui.click(30, 55, interval=1)  # три полоски
     time.sleep(sec_sleep // 2)
     logger2.info(f"click PC настройки")
     try:
@@ -333,25 +341,25 @@ def login_telegram_client_part2(code_tg: str, sec_sleep: int, password: str, deb
         logger2.info("найдена кнопка добавить аккаунт синяя")
     except pyautogui.ImageNotFoundException:
         try:
-            logger2.info("найдена кнопка настройки картинка")
             start = pyautogui.locateCenterOnScreen('start2.png')  # If the file is not a png file it will not work
             logger2.info(start)
             pyautogui.click(start)  # Moves the mouse to the coordinates of the image
             time.sleep(sec_sleep)
+            logger2.info("найдена кнопка настройки картинка")
             logger2.info(f"click PC три точки")
-            pyautogui.click(528, 77, interval=1)  # три точки
+            pyautogui.click(528, 85, interval=1)  # три точки
             time.sleep(sec_sleep // 2)
             logger2.info(f"click PC добавить аккаунт")
-            pyautogui.click(419, 97, interval=1)  # добавить аккаунт
+            pyautogui.click(419, 116, interval=1)  # добавить аккаунт
         except pyautogui.ImageNotFoundException:
             logger2.info("нажато по кордам 105, 545")
             pyautogui.click(105, 545, interval=1)  # настройки
             time.sleep(sec_sleep)
             logger2.info(f"click PC три точки")
-            pyautogui.click(528, 77, interval=1)  # три точки
+            pyautogui.click(528, 85, interval=1)  # три точки
             time.sleep(sec_sleep // 2)
             logger2.info(f"click PC добавить аккаунт")
-            pyautogui.click(419, 97, interval=1)  # добавить аккаунт
+            pyautogui.click(419, 116, interval=1)  # добавить аккаунт
     time.sleep(sec_sleep)
     accounts_on_client += 1
     try:
@@ -426,12 +434,12 @@ def create_app():
             res = login_telegram_client_part1(phone_number, reset=reset_switch, proxy=proxy)
             try_n = 0
             while not res:
-                res = login_telegram_client_part1(phone_number, proxy=proxy)
+                res = login_telegram_client_part1(phone_number, proxy=proxy, reset=reset_switch)
                 try_n += 1
-                if try_n == 3:
+                if try_n >= 3:
                     logger2.critical("НЕ удалось запустить телеграм и пройти 1 этап")
                     send_error_via_tg("НЕ удалось запустить телеграм и пройти 1 этап")
-                    exit("НЕ удалось запустить телеграм и пройти 1 этап")
+                    return False
 
             time.sleep(1)
             auth_sessions[session_id]["status"] = "waiting_code"
