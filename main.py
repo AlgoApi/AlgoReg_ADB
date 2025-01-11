@@ -271,6 +271,33 @@ def send_except(msg_text, err):
 
 
 def init_telegram_worker(telegram_worker):
+    global accounts_on_client, PROXY
+    logger2.warning(f"Аккаунтов зарегестрированно на текущем прокси {accounts_on_client}")
+    if accounts_on_client >= 3:
+        logger2.warning("Аккаунтов зарегестрированно на текущем прокси больше 3")
+        logger2.warning("Рекомендуется изменить прокси")
+        answer_proxy = input("Отправьте что угодно чтобы установить новое прокси или "
+                             "отправьте пустую строку для пропуска: ")
+        while answer_proxy is not None and len(answer_proxy) > 0:
+            accounts_on_client = 0
+            PROXY = {"ip": input("Введите ip: ").replace(" ", ""),
+                     "port": input("Введите порт: ").replace(" ", ""),
+                     "login": input("Введите логин: ").replace(" ", ""),
+                     "password": input("Введите пароль: ").replace(" ", "")}
+            try:
+                config = configparser.ConfigParser()
+                config.read("settings.ini")
+                config["GLOBAL"]["accounts_on_client"] = str(accounts_on_client)
+                config["PROXY"] = PROXY
+                with open('settings.ini', 'w') as configfile:
+                    config.write(configfile)
+            except Exception as e:
+                logger2.error(f"НЕ УДАЛОСЬ СОХРАНИТЬ {accounts_on_client}")
+                logger2.critical(e)
+            logger2.info(f"Теперь прокси: {PROXY}")
+            telegram_worker.PROXY = PROXY
+            answer_proxy = input("Отправьте что угодно чтобы установить новое прокси или "
+                                 "отправьте пустую строку для пропуска: ")
     try:
         telegram_worker.open_telegram()
     except Exception as err:
@@ -320,11 +347,22 @@ def init_telegram_worker(telegram_worker):
     except Exception as err:
         logger2.exception(f"TelegramWorker reinstall_telegram FATAL ERROR : %s", err, exc_info=True)
         send_except("TelegramWorker reinstall_telegram FATAL ERROR :", err)
+    try:
+        config = configparser.ConfigParser()
+        config.read("settings.ini")
+        config["GLOBAL"]["accounts_on_client"] = str(accounts_on_client + 1)
+        with open('settings.ini', 'w') as configfile:
+            config.write(configfile)
+    except Exception as e:
+        logger2.error(f"НЕ УДАЛОСЬ СОХРАНИТЬ {accounts_on_client}")
+        logger2.critical(e)
     return True
 
 
 if __name__ == "__main__":
     services = set_settings()
+
+    response_git_version = "pass"
 
     TelegramWorker = None
 

