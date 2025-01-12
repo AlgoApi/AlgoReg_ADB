@@ -147,20 +147,20 @@ def login_telegram_client_part1(phone_number: str, proxy: dict[str, str], reset=
     #    accounts_on_client = 0
 
     num_folder = 0
-    while num_folder < 10:
+    while num_folder <= 10:
         num_folder += 1
         logger2.info("Попытка создать папку")
-        if not os.path.exists(f"telegram{formatted_datetime}_{num_folder}"):
-            os.makedirs(f'telegram{formatted_datetime}_{num_folder}')
-            # os.makedirs(f'telegram{formatted_datetime}_{num_folder}/TelegramForcePortable')
+        if not os.path.exists(f"telegram{formatted_datetime}_{phone_number}_{num_folder}"):
+            os.makedirs(f'telegram{formatted_datetime}_{phone_number}_{num_folder}')
+            # os.makedirs(f'telegram{formatted_datetime}_{phone_number}_{num_folder}/TelegramForcePortable')
             break
         time.sleep(sec_sleep)
     if num_folder >= 10:
         logger2.critical("login_telegram_client ПАПКА НЕ СОЗДАНА")
         send_error_via_tg("login_telegram_client ПАПКА НЕ СОЗДАНА")
         return False
-    datatime_temp = f'telegram{formatted_datetime}_{num_folder}'
-    target_telegram_path = os.path.join(f'telegram{formatted_datetime}_{num_folder}', 'Telegram.exe')
+    datatime_temp = f'telegram{formatted_datetime}_{phone_number}_{num_folder}'
+    target_telegram_path = os.path.join(f'telegram{formatted_datetime}_{phone_number}_{num_folder}', 'Telegram.exe')
     logger2.info(f"login_telegram_client {target_telegram_path}")
     time.sleep(sec_sleep)
     logger2.info(f"login_telegram_client копирование exe")
