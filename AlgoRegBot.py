@@ -225,10 +225,10 @@ selected_folders = []
 
 
 # Функция построения клавиатуры с учётом страниц
-def build_folder_keyboard_with_pagination(available_folders, selected_folders, page):
+def build_folder_keyboard_with_pagination(available_folders: list, selected_folders, page):
     start_index = page * PAGE_SIZE
     end_index = start_index + PAGE_SIZE
-    current_page_folders = available_folders[start_index:end_index].reverse()
+    current_page_folders = reversed(available_folders[start_index:end_index])
     logger2.info("build_folder_keyboard_with_pagination")
     logger2.info(start_index)
     logger2.info(end_index)
