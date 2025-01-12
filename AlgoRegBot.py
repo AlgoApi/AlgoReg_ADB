@@ -126,7 +126,7 @@ sys.excepthook = handle_exception
 response_git_version = requests.get("https://raw.githubusercontent.com/AlgoApi"
                                     "/AlgoReg_ADB/refs/heads/master/VERSION.txt")
 
-if response_git_version.text.split("\n")[4] != "AlgoRegBot=1.1":
+if response_git_version.text.split("\n")[4] != "AlgoRegBot=1.2":
     logger2.warning("ДОСТУПНО ОБНОВЛЕНИЕ AlgoRegBot.py")
 
 # Конфигурация

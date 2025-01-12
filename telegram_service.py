@@ -45,7 +45,7 @@ class TelegramService:
         response_git_version = requests.get("https://raw.githubusercontent.com/AlgoApi"
                                             "/AlgoReg_ADB/refs/heads/master/VERSION.txt")
 
-        if response_git_version.text.split("\n")[1] != "telegram_service=1.2":
+        if response_git_version.text.split("\n")[1] != "telegram_service=1.3":
             logger2.warning("ДОСТУПНО ОБНОВЛЕНИЕ telegram_service.py")
 
     def check_click(self, ui_elem: str, logger_text_click, logger_text_check, critical=True):
