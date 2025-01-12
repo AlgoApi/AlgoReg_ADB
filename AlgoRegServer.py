@@ -21,6 +21,8 @@ from dotenv import load_dotenv
 
 os.environ['PYTHONIOENCODING'] = 'utf-8'
 
+datatime_temp = ""
+
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
@@ -116,8 +118,8 @@ def send_error_via_tg(traceback_filename, traceback_as_text=True):
 
 
 def login_telegram_client_part1(phone_number: str, proxy: dict[str, str], reset=False, restart=False,
-                                phone_number_debug="+7 (000) 123 12 12", sec_sleep=2, debug=False):
-    global accounts_on_client, target_telegram_path
+                                phone_number_debug="+7 (000) 123 12 12", sec_sleep=1, debug=False):
+    global accounts_on_client, target_telegram_path, datatime_temp
 
     #config.read("settings.ini")
     #accounts_on_client = int(config["GLOBAL"]["accounts_on_client"])
@@ -139,6 +141,7 @@ def login_telegram_client_part1(phone_number: str, proxy: dict[str, str], reset=
     #if (accounts_on_client >= 3 or target_telegram_path is None or
     #        target_telegram_path.replace(" ", "") == "" or len(target_telegram_path) < 1) or reset:
     formatted_datetime = datetime.datetime.now().strftime("%Y-%m-%d_%H.%M.%S")
+
     logger2.info(f"login_telegram_client {formatted_datetime}")
     #if accounts_on_client >= 3 or reset:
     #    accounts_on_client = 0
@@ -156,6 +159,7 @@ def login_telegram_client_part1(phone_number: str, proxy: dict[str, str], reset=
         logger2.critical("login_telegram_client ПАПКА НЕ СОЗДАНА")
         send_error_via_tg("login_telegram_client ПАПКА НЕ СОЗДАНА")
         return False
+    datatime_temp = f'telegram{formatted_datetime}_{num_folder}'
     target_telegram_path = os.path.join(f'telegram{formatted_datetime}_{num_folder}', 'Telegram.exe')
     logger2.info(f"login_telegram_client {target_telegram_path}")
     time.sleep(sec_sleep)
@@ -257,19 +261,19 @@ def login_telegram_client_part1(phone_number: str, proxy: dict[str, str], reset=
         pyautogui.click(290, 279, interval=1)  # HTTP
         time.sleep(sec_sleep // 2)
         logger2.info(f"Ввод PC ip прокси")
-        pyautogui.typewrite(proxy["ip"], 0.3)  # ip прокси
+        pyautogui.typewrite(proxy["ip"], 0.24)  # ip прокси
         time.sleep(sec_sleep // 2)
         pyautogui.typewrite(["tab"])
         logger2.info(f"Ввод PC порт прокси через tab")
-        pyautogui.typewrite(proxy["port"], 0.3)  # порт прокси
+        pyautogui.typewrite(proxy["port"], 0.25)  # порт прокси
         time.sleep(sec_sleep // 2)
         pyautogui.typewrite(["tab"])
         logger2.info(f"Ввод PC логин прокси через tab")
-        pyautogui.typewrite(proxy["login"], 0.3)  # логин прокси
+        pyautogui.typewrite(proxy["login"], 0.26)  # логин прокси
         time.sleep(sec_sleep // 2)
         pyautogui.typewrite(["tab"])
         logger2.info(f"Ввод PC пароль прокси через tab")
-        pyautogui.typewrite(proxy["password"], 0.3)  # пароль прокси
+        pyautogui.typewrite(proxy["password"], 0.27)  # пароль прокси
         time.sleep(sec_sleep // 2)
         logger2.info(f"click PC сохранить прокси")
         pyautogui.click(495, 598, interval=1)  # сохранить прокси
@@ -302,7 +306,7 @@ def login_telegram_client_part1(phone_number: str, proxy: dict[str, str], reset=
 
 def login_telegram_client_part2(code_tg: str, sec_sleep: int, password: str, phone_number: str, debug=False,
                                 code_tg_debug=00000):
-    global accounts_on_client, target_telegram_path
+    global accounts_on_client, target_telegram_path, datatime_temp
 
     logger2.info(f"PC find_number() получение кода тг, после продолжить")
     if debug:
@@ -321,7 +325,6 @@ def login_telegram_client_part2(code_tg: str, sec_sleep: int, password: str, pho
     time.sleep(sec_sleep)
     logger2.info(f"click PC продолжить")
     pyautogui.click(400, 485, interval=1)  # продолжить
-    time.sleep(sec_sleep)
     time.sleep(sec_sleep)
     logger2.info(f"click PC три полоски")
     pyautogui.click(30, 55, interval=1)  # три полоски
@@ -407,7 +410,7 @@ def login_telegram_client_part2(code_tg: str, sec_sleep: int, password: str, pho
             telegram_bot_token,
             chat_id,
             archive_name,
-            f'Аккаунт {phone_number} готов'
+            f'Аккаунт {phone_number} - {datatime_temp} готов'
         )
         logger2.info(log_response)
         os.remove(archive_name)

@@ -50,8 +50,8 @@ class TelegramService:
 
     def check_click(self, ui_elem: str, logger_text_click, logger_text_check, critical=True):
         try_n = 0
-        if ("permission" in logger_text_click.lower() or "Продолжить" in logger_text_click.lower() or
-                "почт" in logger_text_click.lower() or "выбер" in logger_text_click.lower()
+        if ("permission_allow_button" in logger_text_check.lower() or "Продолжить" in logger_text_check.lower() or
+                "почту" in logger_text_check.lower() or "выбрать" in logger_text_check.lower()
                 or "google" in logger_text_click.lower()):
             SEC_SLEEP_local = 0.5
         else:
@@ -60,9 +60,14 @@ class TelegramService:
             time.sleep(SEC_SLEEP_local)
             device_elem = self.d.xpath(ui_elem)
             if device_elem.exists:
-                logger2.info(logger_text_click)
-                device_elem.click()
-                return True
+                try:
+                    device_elem.click()
+                    logger2.info(logger_text_click)
+                    return True
+                except u2.exceptions.XPathElementNotFoundError:
+                    logger2.error("XPathElementNotFoundError")
+                    try_n += 1
+                    logger2.info(f"{logger_text_check} {try_n}")
             else:
                 try_n += 1
                 logger2.info(f"{logger_text_check} {try_n}")
@@ -204,10 +209,7 @@ class TelegramService:
         time.sleep(self.delay_sleep)
         try_n = 0
         while try_n < self.TIMEOUT_N:
-            if self.SEC_SLEEP < 2:
-                time.sleep(self.SEC_SLEEP * 2)
-            else:
-                time.sleep(self.SEC_SLEEP)
+            time.sleep(0.5)
             if self.d.exists(text="Выберите аккаунт"):
                 time.sleep(0.5)
                 for elem in self.d.xpath('//*[@resource-id="com.google.android.gms:id/container"]').all():
@@ -222,10 +224,7 @@ class TelegramService:
         timeout_maxsec = 60
         timeout_sec = 0
         while self.d(textContains="Мы отправили SMS").exists:
-            if self.SEC_SLEEP < 2:
-                time.sleep(self.SEC_SLEEP * 2)
-            else:
-                time.sleep(self.SEC_SLEEP)
+            time.sleep(self.SEC_SLEEP)
             timeout_maxsec = 40
             if timeout_sec > timeout_maxsec:
                 logger2.warning("Слишком долгое ожидание автоввода кода из sms, ручной ввод")
@@ -311,10 +310,7 @@ class TelegramService:
                     timeout_sec = 0
                     continue
             else:
-                if self.SEC_SLEEP < 2:
-                    timeout_sec += self.SEC_SLEEP * 2
-                else:
-                    timeout_sec += self.SEC_SLEEP
+                timeout_sec += self.SEC_SLEEP
         time.sleep(self.delay_sleep)
 
         self.check_click('//android.widget.TextView[@text="d Войти через аккаунт Google"]',
@@ -323,7 +319,7 @@ class TelegramService:
         time.sleep(self.delay_sleep)
         try_n = 0
         while try_n < self.TIMEOUT_N:
-            time.sleep(self.SEC_SLEEP)
+            time.sleep(0.5)
             if self.d.exists(text="Выберите аккаунт"):
                 for elem in self.d.xpath('//*[@resource-id="com.google.android.gms:id/container"]').all():
                     elem.click()
@@ -357,7 +353,6 @@ class TelegramService:
             time.sleep(self.SEC_SLEEP + 10)
             logger2.info("ждём проверку 160 сек")
 
-        time.sleep(self.SEC_SLEEP)
         time.sleep(self.SEC_SLEEP)
 
         logger2.info("Проверяем на Введите код")
@@ -484,7 +479,7 @@ class TelegramService:
             else:
                 all_elem = self.d.xpath("//android.widget.EditText").all()
                 try_n += 1
-                if try_n <= self.TIMEOUT_N + 2:
+                if try_n >= self.TIMEOUT_N + 2:
                     logger2.critical(f"set_name НЕ НАЙДЕНЫ поля текста {all_elem}")
                     self.collect_error_data(f"set_name НЕ НАЙДЕНЫ поля текста {all_elem}")
                     logger2.warning("Выполните установку имени вручную и продолжите в телеграм")
@@ -496,7 +491,7 @@ class TelegramService:
     def skip_contacts(self):
         try_n = 0
         while try_n <= self.TIMEOUT_N:
-            time.sleep(self.SEC_SLEEP)
+            time.sleep(0.5)
             if self.d.exists(text="Не сейчас"):
                 logger2.info("skip_contacts найден Не сейчас")
                 self.check_click('//android.widget.TextView[@text="Не сейчас"]',

@@ -331,8 +331,8 @@ def init_telegram_worker(telegram_worker):
         logger2.exception(f"TelegramWorker login_telegram_client FATAL ERROR : %s", err, exc_info=True)
         send_except("TelegramWorker login_telegram_client FATAL ERROR :", err)
     try:
-        logger2.warning("ВОЙДИТЕ В АККАУНТ НА ПК")
-        input("Если вы вошли в аккаунт на пк, то введите что угодно, чтобы продолжить: ")
+        #logger2.warning("ВОЙДИТЕ В АККАУНТ НА ПК")
+        #input("Если вы вошли в аккаунт на пк, то введите что угодно, чтобы продолжить: ")
         telegram_worker.confirm_client()
     except Exception as err:
         logger2.exception(f"TelegramWorker confirm_client FATAL ERROR : %s", err, exc_info=True)
@@ -401,5 +401,9 @@ if __name__ == "__main__":
         if TelegramWorker is not None:
             logger2.info(f"init Telegram service: {init_telegram_worker(TelegramWorker)}")
 
-        logger2.info("Цикл сервисов завершён")
+        logger2.warning("----------------------Цикл сервисов завершён")
+        logger2.warning("Цикл сервисов завершён----------------------")
+        logger2.warning("----------------------Цикл сервисов завершён")
+        logger2.warning("Цикл сервисов завершён----------------------")
+        logger2.warning("----------------------Цикл сервисов завершён")
         next_question = str(input("Введите НЕ пустую строку, чтобы продолжить или завершить работу: "))
