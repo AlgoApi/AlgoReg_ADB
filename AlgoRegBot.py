@@ -260,7 +260,7 @@ async def snapshot_telegram_service(client: Client, message: Message):
     global available_folders
     base_dir = os.getcwd()
     args = message.text.split()
-    if len(args) >= 1:
+    if len(args) >= 2:
         args = args[1] + "_"
     else:
         args = ""
