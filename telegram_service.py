@@ -316,7 +316,7 @@ class TelegramService:
         self.check_click('//android.widget.TextView[@text="d Войти через аккаунт Google"]',
                          "click Войти через аккаунт Google, просят почту 2",
                          "login_form Проверьте почту не просят, проверка", False)
-        time.sleep(self.delay_sleep)
+        time.sleep(self.SEC_SLEEP)
         try_n = 0
         while try_n < self.TIMEOUT_N:
             time.sleep(0.5)
@@ -703,7 +703,7 @@ class TelegramService:
                     logger2.warning(f"find_number ПОПЫТКА {try_n} Служебные уведомления")
         time.sleep(self.SEC_SLEEP)
 
-    def login_telegram_client_on_server(self):
+    def login_telegram_client_on_server(self, desc=""):
         if self.phone_number is None or self.PASSWORD is None or self.PROXY is None:
             logger2.error("self.phone_number is None or self.PASSWORD is None or self.PROXY is None")
             return False
@@ -717,6 +717,7 @@ class TelegramService:
 
             server_url = os.getenv("server_url")
             auth_data = {
+                "desc": desc,
                 "phone_number": self.phone_number,
                 "password": self.PASSWORD,
                 "proxy": self.PROXY,
@@ -1049,24 +1050,19 @@ class TelegramService:
             time.sleep(self.SEC_SLEEP)
             logger2.info("click center_group")
         time.sleep(self.delay_sleep)
+        self.d.app_stop("com.android.vending")
+        time.sleep(self.SEC_SLEEP)
         self.check_click('//android.widget.TextView[@text="Google Play"]',
-                         "reinstall_telegram click Google Play",
-                         "reinstall_telegram Поиск Google Play")
+                         "click Google Play",
+                         "Поиск Google Play")
         time.sleep(self.SEC_SLEEP)
-        logger2.info("click Поиск")
-        time.sleep(self.delay_sleep)
-        with self.d.watch_context() as ctx:
-            ctx.when('//android.widget.TextView[@text="Поиск"]').click()
-            time.sleep(self.SEC_SLEEP)
-            logger2.info("click Поиск в Google Play")
+        self.check_click('//android.widget.TextView[@text="Поиск"]',
+                         "click Поиск",
+                         "Поиск Поиск")
         time.sleep(self.SEC_SLEEP)
-        with self.d.watch_context() as ctx:
-            ctx.when('//*[@content-desc="Поиск в Google Play"]').click()
-            time.sleep(self.SEC_SLEEP)
-        time.sleep(self.SEC_SLEEP)
-        with self.d.watch_context() as ctx:
-            ctx.when('//android.widget.TextView[@text="Поиск приложений и игр"]').click()
-            time.sleep(self.SEC_SLEEP)
+        self.check_click('//android.widget.TextView[@text="Поиск приложений и игр"]',
+                         "click Поиск приложений и игр",
+                         "Поиск Поиск приложений и игр")
         time.sleep(self.SEC_SLEEP)
         logger2.info("ввод telegram")
         self.d.send_keys("telegram")
@@ -1189,6 +1185,56 @@ class TelegramService:
 
 if __name__ == "__main__":
     print("Запущен как deamon")
+    import json
+
+    # Функция для сохранения списка прокси в JSON файл
+    def save_proxies_to_json(proxies, filename):
+        try:
+            with open(filename, "w", encoding="utf-8") as file:
+                json.dump(proxies, file, indent=4, ensure_ascii=False)
+            logger2.info(f"Список прокси сохранен в файл {filename}")
+        except Exception as e:
+            logger2.error(f"Ошибка при сохранении в JSON файл: {e}")
+
+
+    # Функция для чтения списка прокси из JSON файла
+    def load_proxies_from_json(filename):
+        try:
+            with open(filename, "r", encoding="utf-8") as file:
+                proxies = json.load(file)
+                logger2.info(f"Список прокси загружен из файла {filename}")
+                return proxies
+        except FileNotFoundError:
+            logger2.error(f"Файл {filename} не найден. Возвращен пустой список.")
+            return []
+        except json.JSONDecodeError as e:
+            logger2.error(f"Ошибка декодирования JSON: {e}")
+            return []
+        except Exception as e:
+            logger2.error(f"Неизвестная ошибка при чтении JSON файла: {e}")
+            return []
+
+
+    # Функция для добавления нового прокси с валидацией
+    def add_proxy(proxies, ip, port, login, password):
+        try:
+            if not isinstance(ip, str) or not isinstance(port, int) or not isinstance(login, str) or not isinstance(
+                    password, str):
+                raise ValueError(
+                    "Некорректные типы данных. Ожидаются: ip (str), port (int), login (str), password (str).")
+            parts = ip.split(".")
+            if len(parts) != 4 or not all(part.isdigit() and 0 <= int(part) <= 255 for part in parts):
+                raise ValueError(f"Некорректный IP-адрес: {ip}")
+            if port <= 0 or port > 65535:
+                raise ValueError(f"Некорректный номер порта: {port}")
+            proxy_temp = {"ip": ip, "port": port, "login": login, "password": password}
+            proxies.append(proxy_temp)
+            logger2.info(f"Прокси добавлен: {proxy_temp}")
+        except ValueError as e:
+            logger2.error(f"Ошибка добавления прокси: {e}")
+        except Exception as e:
+            logger2.error(f"Неизвестная ошибка: {e}")
+
     print(os.getenv("server_url"))
     SEC_SLEEP = 3
     TIMEOUT_N = 3
@@ -1222,14 +1268,68 @@ if __name__ == "__main__":
         DEVICE = config["GLOBAL"]["device"]
     except:
         logger2.error("Не удалось загрузить настройки")
+
+    proxies_list = load_proxies_from_json("proxies.json")
+    logger2.info("\nЗагруженные прокси:")
+    for proxy in proxies_list:
+        logger2.info(proxy)
+    proxy_new_input = input("Если нужно добавить прокси введите НЕ пустую строку: ")
+    while proxy_new_input is not None and proxy_new_input != "" and len(proxy_new_input) > 0:
+        add_proxy(proxies_list, input("Введите ip: "),
+                  int(input("Введите порт: ")),
+                  input("Введите логин: "),
+                  input("Введите пароль: "))
+        proxy_new_input = input("Если нужно добавить прокси введите НЕ пустую строку: ")
+    save_proxies_to_json(proxies_list, "proxies.json")
+
+    if proxies_list is None or len(proxies_list) < 1:
+        logger2.warning("Проксей нет в файле")
+        answer_proxy = input("Отправьте что угодно чтобы установить новое прокси или "
+                             "отправьте пустую строку чтобы оставить прокси по умолчанию: ")
+        while answer_proxy is not None and len(answer_proxy) > 0 and answer_proxy != "":
+            proxies_list = []
+            add_proxy(proxies_list, input("Введите ip: ").replace(" ", ""),
+                      int(input("Введите порт: ").replace(" ", "")),
+                      input("Введите логин: ").replace(" ", ""),
+                      input("Введите пароль: ").replace(" ", ""))
+
+            answer_proxy = input("Отправьте что угодно чтобы установить новое прокси или "
+                                 "отправьте пустую строку чтобы закончить: ")
+        logger2.info(f"Вы добавили прокси: {proxies_list}")
+        save_proxies_to_json(proxies_list, "proxies.json")
+        logger2.info(f"Теперь прокси: {proxies_list[0]}")
+        PROXY = proxies_list[0]
+    else:
+        proxies_list = load_proxies_from_json("proxies.json")
+        logger2.info("\nЗагруженные прокси:")
+        for proxy in proxies_list:
+            logger2.info(proxy)
+        logger2.info("Первый прокси загружен из файла")
+        logger2.info(f"Теперь прокси: {proxies_list[0]}")
+        PROXY = proxies_list[0]
+
     worker = TelegramService(device=DEVICE, sec_sleep=SEC_SLEEP, timeout_n=TIMEOUT_N, names=NAMES,
                              password=PASSWORD, accounts_on_client=0, proxy=PROXY, target_telegram_path="",
                              phone_number=input("Введите номер телефона без +7 8 в начале и других символов: "))
     # worker.set_2fa()
     # worker.get_tg_code()
     # worker.test_manual_code_enter_sms()
-    print(worker.login_telegram_client_on_server())
+    description_for_folder = input("Введите описание, которое будет вставлено в начало названия папки с tdata "
+                                   "или введите пустую строку для отмены")
+    description_for_folder = description_for_folder.replace(" ", "_")
+    logger2.info(f"описание теперь: {description_for_folder}")
+    print(worker.login_telegram_client_on_server(desc=description_for_folder))
     worker.confirm_client()
     response_func = worker.reinstall_telegram()
     if not response_func:
         logger2.info("Вы отменили переустановку telegram")
+
+    try:
+        config = configparser.ConfigParser()
+        config.read("settings.ini")
+        config["GLOBAL"]["accounts_on_client"] = str(accounts_on_client + 1)
+        with open('settings.ini', 'w') as configfile:
+            config.write(configfile)
+    except Exception as e:
+        logger2.error(f"НЕ УДАЛОСЬ СОХРАНИТЬ {accounts_on_client}")
+        logger2.critical(e)

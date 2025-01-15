@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import asyncio
+import shutil
 import uuid
 import json
 import logging
@@ -228,7 +229,7 @@ selected_folders = []
 def build_folder_keyboard_with_pagination(available_folders: list, selected_folders, page):
     start_index = page * PAGE_SIZE
     end_index = start_index + PAGE_SIZE
-    current_page_folders = reversed(available_folders[start_index:end_index])
+    current_page_folders = available_folders[start_index:end_index]
     logger2.info("build_folder_keyboard_with_pagination")
     logger2.info(start_index)
     logger2.info(end_index)
@@ -256,16 +257,21 @@ def build_folder_keyboard_with_pagination(available_folders: list, selected_fold
 @app.on_message(filters.command("Snapshot_TelegramService") & filters.create(is_authorized))
 async def snapshot_telegram_service(client: Client, message: Message):
     base_dir = os.getcwd()
+    args = message.text.split()
+    if len(args) >= 1:
+        args = args[1] + "_"
+    else:
+        args = ""
     available_folders = [
         folder_name for folder_name in os.listdir(base_dir)
-        if folder_name.startswith("telegram") and os.path.isdir(folder_name)
+        if folder_name.startswith(f"telegram") and args in folder_name and os.path.isdir(folder_name)
     ]
     logger2.info("snapshot_telegram_service")
     logger2.info(base_dir)
     logger2.info(available_folders)
 
     if not available_folders:
-        await message.reply("Не найдены папки, начинающиеся на 'telegram'.")
+        await message.reply(f"Не найдены папки, начинающиеся на 'telegram' и имеющие '{args}' в названии.")
         return
 
     global selected_folders
@@ -436,6 +442,7 @@ async def callback_query_handler(client: Client, callback_query):
                                     file_path,
                                     os.path.relpath(file_path, base_dir)
                                 )
+                    shutil.move(folder_path, os.path.join(base_dir, "archive"))
                 except Exception as e:
                     logger2.info(f"Скип {file}")
                     logger2.exception(e, exc_info=True)

@@ -7,6 +7,7 @@ import datetime
 from dotenv import load_dotenv
 import configparser
 import os
+import json
 
 
 logger2 = logger.logger2
@@ -25,6 +26,8 @@ PROXY = {"ip": "",
          "port": "",
          "login": "",
          "password": ""}
+
+proxies_list = []
 
 DEVICE = ""
 
@@ -271,35 +274,105 @@ def send_except(msg_text, err):
     logger.send_error_via_tg(f"error_{formatted_datetime}.png", f"{msg_text}\n{err}", xml_path)
     d.stop_uiautomator()
 
+# Функция для сохранения списка прокси в JSON файл
+def save_proxies_to_json(proxies, filename):
+    try:
+        with open(filename, "w", encoding="utf-8") as file:
+            json.dump(proxies, file, indent=4, ensure_ascii=False)
+        logger2.info(f"Список прокси сохранен в файл {filename}")
+    except Exception as e:
+        logger2.error(f"Ошибка при сохранении в JSON файл: {e}")
+
+# Функция для чтения списка прокси из JSON файла
+def load_proxies_from_json(filename):
+    try:
+        with open(filename, "r", encoding="utf-8") as file:
+            proxies = json.load(file)
+            logger2.info(f"Список прокси загружен из файла {filename}")
+            return proxies
+    except FileNotFoundError:
+        logger2.error(f"Файл {filename} не найден. Возвращен пустой список.")
+        return []
+    except json.JSONDecodeError as e:
+        logger2.error(f"Ошибка декодирования JSON: {e}")
+        return []
+    except Exception as e:
+        logger2.error(f"Неизвестная ошибка при чтении JSON файла: {e}")
+        return []
+
+# Функция для добавления нового прокси с валидацией
+def add_proxy(proxies, ip, port, login, password):
+    try:
+        if not isinstance(ip, str) or not isinstance(port, int) or not isinstance(login, str) or not isinstance(password, str):
+            raise ValueError("Некорректные типы данных. Ожидаются: ip (str), port (int), login (str), password (str).")
+        parts = ip.split(".")
+        if len(parts) != 4 or not all(part.isdigit() and 0 <= int(part) <= 255 for part in parts):
+            raise ValueError(f"Некорректный IP-адрес: {ip}")
+        if port <= 0 or port > 65535:
+            raise ValueError(f"Некорректный номер порта: {port}")
+        proxy_temp = {"ip": ip, "port": port, "login": login, "password": password}
+        proxies.append(proxy_temp)
+        logger2.info(f"Прокси добавлен: {proxy_temp}")
+    except ValueError as e:
+        logger2.error(f"Ошибка добавления прокси: {e}")
+    except Exception as e:
+        logger2.error(f"Неизвестная ошибка: {e}")
 
 def init_telegram_worker(telegram_worker):
-    global accounts_on_client, PROXY
+    global accounts_on_client, PROXY, proxies_list
     logger2.warning(f"Аккаунтов зарегестрированно на текущем прокси {accounts_on_client}")
     if accounts_on_client >= 3:
         logger2.warning("Аккаунтов зарегестрированно на текущем прокси больше 3")
         logger2.warning("Рекомендуется изменить прокси")
-        answer_proxy = input("Отправьте что угодно чтобы установить новое прокси или "
-                             "отправьте пустую строку для пропуска: ")
-        while answer_proxy is not None and len(answer_proxy) > 0:
-            accounts_on_client = 0
-            PROXY = {"ip": input("Введите ip: ").replace(" ", ""),
-                     "port": input("Введите порт: ").replace(" ", ""),
-                     "login": input("Введите логин: ").replace(" ", ""),
-                     "password": input("Введите пароль: ").replace(" ", "")}
-            try:
-                config = configparser.ConfigParser()
-                config.read("settings.ini")
-                config["GLOBAL"]["accounts_on_client"] = str(accounts_on_client)
-                config["PROXY"] = PROXY
-                with open('settings.ini', 'w') as configfile:
-                    config.write(configfile)
-            except Exception as e:
-                logger2.error(f"НЕ УДАЛОСЬ СОХРАНИТЬ {accounts_on_client}")
-                logger2.critical(e)
-            logger2.info(f"Теперь прокси: {PROXY}")
-            telegram_worker.PROXY = PROXY
+        accounts_on_client = 0
+        try:
+            config = configparser.ConfigParser()
+            config.read("settings.ini")
+            config["GLOBAL"]["accounts_on_client"] = str(accounts_on_client)
+            with open('settings.ini', 'w') as configfile:
+                config.write(configfile)
+        except Exception as e:
+            logger2.error(f"НЕ УДАЛОСЬ СОХРАНИТЬ {accounts_on_client}")
+            logger2.critical(e)
+        try:
+            del proxies_list[0]
+        except IndexError:
+            pass
+        except Exception as e:
+            logger2.error(f"Ошибка удаления прокси из json {e}")
+        save_proxies_to_json(proxies_list, "proxies.json")
+        if proxies_list is None or len(proxies_list) < 1:
+            logger2.warning("Проксей нет в файле")
             answer_proxy = input("Отправьте что угодно чтобы установить новое прокси или "
-                                 "отправьте пустую строку для пропуска: ")
+                                 "отправьте пустую строку чтобы оставить прокси по умолчанию: ")
+            while answer_proxy is not None and len(answer_proxy) > 0 and answer_proxy != "":
+                proxies_list = []
+                add_proxy(proxies_list, input("Введите ip: ").replace(" ", ""),
+                          int(input("Введите порт: ").replace(" ", "")),
+                          input("Введите логин: ").replace(" ", ""),
+                          input("Введите пароль: ").replace(" ", ""))
+
+                answer_proxy = input("Отправьте что угодно чтобы установить новое прокси или "
+                                     "отправьте пустую строку чтобы закончить: ")
+            logger2.info(f"Вы добавили прокси: {proxies_list}")
+            save_proxies_to_json(proxies_list, "proxies.json")
+            logger2.info(f"Теперь прокси: {proxies_list[0]}")
+            telegram_worker.PROXY = proxies_list[0]
+        else:
+            proxies_list = load_proxies_from_json("proxies.json")
+            logger2.info("\nЗагруженные прокси:")
+            for proxy in proxies_list:
+                logger2.info(proxy)
+            logger2.info("Первый прокси загружен из файла")
+            logger2.info(f"Теперь прокси: {proxies_list[0]}")
+            telegram_worker.PROXY = proxies_list[0]
+    logger2.warning("------------------------------")
+    logger2.warning("Внимание! Установите значение.")
+    logger2.warning("------------------------------")
+    description_for_folder = input("Введите описание, которое будет вставлено в начало названия папки с tdata "
+                                   "или введите пустую строку для отмены")
+    description_for_folder = description_for_folder.replace(" ", "_")
+    logger2.info(f"описание теперь: {description_for_folder}")
     try:
         telegram_worker.open_telegram()
     except Exception as err:
@@ -326,7 +399,7 @@ def init_telegram_worker(telegram_worker):
         logger2.exception(f"TelegramWorker set_2fa FATAL ERROR : %s", err, exc_info=True)
         send_except("TelegramWorker set_2fa FATAL ERROR :", err)
     try:
-        telegram_worker.login_telegram_client_on_server()
+        telegram_worker.login_telegram_client_on_server(desc=description_for_folder)
     except Exception as err:
         logger2.exception(f"TelegramWorker login_telegram_client FATAL ERROR : %s", err, exc_info=True)
         send_except("TelegramWorker login_telegram_client FATAL ERROR :", err)
@@ -350,9 +423,10 @@ def init_telegram_worker(telegram_worker):
         logger2.exception(f"TelegramWorker reinstall_telegram FATAL ERROR : %s", err, exc_info=True)
         send_except("TelegramWorker reinstall_telegram FATAL ERROR :", err)
     try:
+        accounts_on_client =+ 1
         config = configparser.ConfigParser()
         config.read("settings.ini")
-        config["GLOBAL"]["accounts_on_client"] = str(accounts_on_client + 1)
+        config["GLOBAL"]["accounts_on_client"] = str(accounts_on_client)
         with open('settings.ini', 'w') as configfile:
             config.write(configfile)
     except Exception as e:
@@ -369,6 +443,19 @@ if __name__ == "__main__":
 
     if response_git_version.text.split("\n")[0] != "main=1.2":
         logger2.warning("ДОСТУПНО ОБНОВЛЕНИЕ main.py")
+
+    proxies_list = load_proxies_from_json("proxies.json")
+    logger2.info("\nЗагруженные прокси:")
+    for proxy in proxies_list:
+        logger2.info(proxy)
+    proxy_new_input = input("Если нужно добавить прокси введите НЕ пустую строку: ")
+    while proxy_new_input is not None and proxy_new_input != "" and len(proxy_new_input) > 0:
+        add_proxy(proxies_list, input("Введите ip: "),
+                  int(input("Введите порт: ")),
+                  input("Введите логин: "),
+                  input("Введите пароль: "))
+        proxy_new_input = input("Если нужно добавить прокси введите НЕ пустую строку: ")
+    save_proxies_to_json(proxies_list, "proxies.json")
 
     TelegramWorker = None
 
@@ -388,6 +475,7 @@ if __name__ == "__main__":
 
     next_question = str(input("Введите НЕ пустую строку, чтобы продолжить или завершить работу: "))
     while next_question is not None and len(next_question) > 0:
+        proxies_list = load_proxies_from_json("proxies.json")
         logger2.warning("УСТАНОВИТЕ НОВУЮ СИМКУ")
         input("Введите что либо или просто нажмите Enter для продолжения")
         logger2.warning("измените текущий гугл аккаунт в настройках и удалите старый при необходимости")

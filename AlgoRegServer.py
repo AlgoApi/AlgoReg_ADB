@@ -117,7 +117,7 @@ def send_error_via_tg(traceback_filename, traceback_as_text=True):
     print(log_response)
 
 
-def login_telegram_client_part1(phone_number: str, proxy: dict[str, str], reset=False, restart=False,
+def login_telegram_client_part1(phone_number: str, proxy: dict[str, str], desc:str, reset=False, restart=False,
                                 phone_number_debug="+7 (000) 123 12 12", sec_sleep=1, debug=False):
     global accounts_on_client, target_telegram_path, datatime_temp
 
@@ -140,7 +140,7 @@ def login_telegram_client_part1(phone_number: str, proxy: dict[str, str], reset=
 
     #if (accounts_on_client >= 3 or target_telegram_path is None or
     #        target_telegram_path.replace(" ", "") == "" or len(target_telegram_path) < 1) or reset:
-    formatted_datetime = datetime.datetime.now().strftime("%Y-%m-%d_%H.%M.%S")
+    formatted_datetime = datetime.datetime.now().strftime("%m-%d_%H.%M")
 
     logger2.info(f"login_telegram_client {formatted_datetime}")
     #if accounts_on_client >= 3 or reset:
@@ -150,17 +150,17 @@ def login_telegram_client_part1(phone_number: str, proxy: dict[str, str], reset=
     while num_folder <= 10:
         num_folder += 1
         logger2.info("Попытка создать папку")
-        if not os.path.exists(f"telegram{formatted_datetime}_{phone_number}_{num_folder}"):
-            os.makedirs(f'telegram{formatted_datetime}_{phone_number}_{num_folder}')
-            # os.makedirs(f'telegram{formatted_datetime}_{phone_number}_{num_folder}/TelegramForcePortable')
+        if not os.path.exists(f"telegram_{desc}_{formatted_datetime}_{phone_number}_{num_folder}"):
+            os.makedirs(f'telegram_{desc}_{formatted_datetime}_{phone_number}_{num_folder}')
+            # os.makedirs(f'telegram_{desc}_{formatted_datetime}_{phone_number}_{num_folder}/TelegramForcePortable')
             break
         time.sleep(sec_sleep)
     if num_folder >= 10:
         logger2.critical("login_telegram_client ПАПКА НЕ СОЗДАНА")
         send_error_via_tg("login_telegram_client ПАПКА НЕ СОЗДАНА")
         return False
-    datatime_temp = f'telegram{formatted_datetime}_{phone_number}_{num_folder}'
-    target_telegram_path = os.path.join(f'telegram{formatted_datetime}_{phone_number}_{num_folder}', 'Telegram.exe')
+    datatime_temp = f'telegram_{desc}_{formatted_datetime}_{phone_number}_{num_folder}'
+    target_telegram_path = os.path.join(f'telegram_{desc}_{formatted_datetime}_{phone_number}_{num_folder}', 'Telegram.exe')
     logger2.info(f"login_telegram_client {target_telegram_path}")
     time.sleep(sec_sleep)
     logger2.info(f"login_telegram_client копирование exe")
@@ -304,7 +304,7 @@ def login_telegram_client_part1(phone_number: str, proxy: dict[str, str], reset=
     return True
 
 
-def login_telegram_client_part2(code_tg: str, sec_sleep: int, password: str, phone_number: str, debug=False,
+def login_telegram_client_part2(code_tg: str, sec_sleep: int, password: str, phone_number: str, desk:str, debug=False,
                                 code_tg_debug=00000):
     global accounts_on_client, target_telegram_path, datatime_temp
 
@@ -438,6 +438,7 @@ def create_app():
     @app.route('/auth/telegram', methods=['POST'])
     def start_auth():
         data = request.json
+        desc = data.get("desc")
         phone_number = data.get("phone_number")
         password = data.get("password")
         proxy = data.get("proxy")
@@ -490,7 +491,7 @@ def create_app():
             res = login_telegram_client_part1(phone_number, reset=reset_switch, proxy=proxy)
             try_n = 0
             while not res:
-                res = login_telegram_client_part1(phone_number, proxy=proxy, reset=reset_switch)
+                res = login_telegram_client_part1(phone_number, proxy=proxy, reset=reset_switch, desc=desc)
                 try_n += 1
                 if try_n >= 3:
                     logger2.critical("НЕ удалось запустить телеграм и пройти 1 этап")
