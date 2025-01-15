@@ -223,6 +223,7 @@ def auth_without_args_filter(_, __, message: Message) -> bool:
 PAGE_SIZE = 10  # Количество папок на одной странице
 folder_pages = []  # Хранилище страниц
 selected_folders = []
+available_folders = []
 
 
 # Функция построения клавиатуры с учётом страниц
@@ -256,6 +257,7 @@ def build_folder_keyboard_with_pagination(available_folders: list, selected_fold
 # Обработчик команды Snapshot_TelegramService
 @app.on_message(filters.command("Snapshot_TelegramService") & filters.create(is_authorized))
 async def snapshot_telegram_service(client: Client, message: Message):
+    global available_folders
     base_dir = os.getcwd()
     args = message.text.split()
     if len(args) >= 1:
@@ -331,6 +333,7 @@ async def auth_handler(client: Client, message: Message):
 # Хэндлер для обработки нажатий кнопок
 @app.on_callback_query()
 async def callback_query_handler(client: Client, callback_query):
+    global available_folders
     logger2.info("callback_query_handler")
     data = callback_query.data
     logger2.info(data)
@@ -395,10 +398,6 @@ async def callback_query_handler(client: Client, callback_query):
         page = int(page)
 
         base_dir = os.getcwd()
-        available_folders = [
-            folder_name for folder_name in os.listdir(base_dir)
-            if folder_name.startswith("telegram") and os.path.isdir(folder_name)
-        ]
         logger2.info(page)
         logger2.info(base_dir)
         logger2.info(available_folders)
@@ -490,10 +489,7 @@ async def callback_query_handler(client: Client, callback_query):
         logger2.info("Обработка выбора/удаления папок")
         # Обработка выбора/удаления папок
         base_dir = os.getcwd()
-        available_folders = [
-            folder_name for folder_name in os.listdir(base_dir)
-            if folder_name.startswith("telegram") and os.path.isdir(folder_name)
-        ]
+
 
         logger2.info(available_folders)
 
